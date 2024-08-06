@@ -1,0 +1,21 @@
+{
+  "name": "kamaz_map",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "kamaz_map": "file:",
+    "vue": "^3.4.31"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "cesium": "^1.120.0",
+    "vite": "^5.3.5",
+    "vite-plugin-cesium": "^1.2.22"
+  }
+}
