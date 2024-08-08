@@ -35,27 +35,17 @@ export default {
   methods: {
     eventColorPick() {
       // Обработка событий наведения мыши
-      //создаем обьект для хранения информации предыдущего тайла
+      //создаем объект для хранения информации предыдущего тайла
       let currentFeature = {
         feature: undefined,
         originalColor: new Cesium.Color(),
       };
 
-      const silhouetteBlue =
-        Cesium.PostProcessStageLibrary.createEdgeDetectionStage();
-      silhouetteBlue.uniforms.color = Cesium.Color.LIME;
-      silhouetteBlue.uniforms.length = 0.01;
-      silhouetteBlue.selected = [];
-
-      this.viewer.scene.postProcessStages.add(
-        Cesium.PostProcessStageLibrary.createSilhouetteStage([silhouetteBlue])
-      );
-
       const handler = new Cesium.ScreenSpaceEventHandler(this.viewer.canvas);
       handler.setInputAction((movement) => {
-        silhouetteBlue.selected = [];
-        if (!this.isRandomColorTile) return;
-        const pickedFeature = this.viewer.scene.pick(movement.endPosition);
+        if (!this.isRandomColorTile) return; //прерываем логику выделения
+
+        const pickedFeature = this.viewer.scene.pick(movement.endPosition); // определение тайла
 
         if (
           (currentFeature.feature === pickedFeature ||
@@ -91,7 +81,7 @@ export default {
           currentFeature.originalColor = pickedFeature.content.tile.color;
 
           Cesium.Color.clone(pickedFeature.color, currentFeature.originalColor);
-          const darkeningFactor = 0.1;
+          const darkeningFactor = 0.1; // коэффициент затемнения
 
           const nowColor = pickedFeature.content.tile.color;
           //получаем темный цвет тайла
@@ -103,16 +93,19 @@ export default {
           };
           // Выделяем новый выбранный тайл
           pickedFeature.content.tile.color = darkColor;
-          // pickedFeature.primitives.outlineColor         = Cesium.Color.RED
-          // console.log(pickedFeature)
         }
       }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     },
 
     createTitles() {
       this.viewer.entities.removeAll(); // чистим все записи дат
+
+      const minDistCam = this.visibleTitle.reduce((acc, tile) => {
+        return tile._distanceToCamera < acc ? tile._distanceToCamera : acc;
+      }, Infinity);
+
       this.visibleTitle.forEach((title) => {
-        const { center, radius } = title.boundingSphere;
+        const { center } = title.boundingSphere;
 
         const titleBody = {
           position: center,
@@ -123,10 +116,14 @@ export default {
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 2,
 
-            heightReference: Cesium.HeightReference.CLAMP_TO_3D_TILE, //RELATIVE_TO_3D_TILE//
+            heightReference: Cesium.HeightReference.CLAMP_TO_3D_TILE,
             verticalOrigin: Cesium.VerticalOrigin.TOP,
 
-            disableDepthTestDistance: 7500000 * 1.5, //эмпирическое число чтобы были видны подписи до центра земли, а после были скрыты
+            disableDepthTestDistance: 7000000 + minDistCam,
+            /*
+             *эмпирическое число чтобы были видны подписи до центра земли, а после были скрыты телом карты
+             *(по сути это должно быть радиус сферы земли + минимальное значение до камеры)
+             */
           },
         };
         this.viewer.entities.add(titleBody);
@@ -158,6 +155,7 @@ export default {
     },
 
     async initMap() {
+      //ключ должен быть в переменных окружения или секретах но раз он указан в открытом коде Cesium решил оставить
       Cesium.Ion.defaultAccessToken =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjMTA1OGM2ZS0zMTVjLTQyM2EtOTBmYy01MmNhNGJhYWQ2YTMiLCJpZCI6MjMyMjM2LCJpYXQiOjE3MjI1ODYwOTl9.eFDC9edSCJ_L2KPTNqGvha0ie8fVLwt7-AZjyAHbIeg";
 
@@ -169,7 +167,7 @@ export default {
         animation: false,
       });
 
-      this.viewer.infoBox.frame.removeAttribute("sandbox");
+      //this.viewer.infoBox.frame.removeAttribute("sandbox");
 
       // Загрузка 3D тайлов
       try {
@@ -191,8 +189,8 @@ export default {
       year: "numeric", // Год в формате 2023
       locale: "ru-RU", // Русская локаль для форматирования
     };
-    this.dateText = new Date().toLocaleString("ru-RU", options); // сохраняю в стейт чтобы не пересчитывать строку каждый раз
-    this.visibleTitle = this.viewer.scene.primitives.get(0)._selectedTiles
+    this.dateText = new Date().toLocaleString("ru-RU", options); // сохраняю текст лейблов в стейт чтобы не пересчитывать строку каждый раз
+    this.visibleTitle = this.viewer.scene.primitives.get(0)._selectedTiles; //сохраняем информацию об отрисованных тайтлов, для запуска ивента тайтлов
     this.eventColorPick(); // создаем событие по раскраске тайтлов
     this.eventTitle(); // создаем событие по добавлению надписи на тайтл
   },
